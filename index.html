@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Parse XML file</title>
+    <script type="text/javascript">
+        // Load XML file
+        function loadXML(url){
+            var xmlhttp = null;
+            if (window.XMLHttpRequest)
+            {
+                // code for IE7+, Firefox, Chrome, Opera, Safari
+                xmlhttp=new XMLHttpRequest();
+            } else {
+                // code for IE6, IE5
+                xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            xmlhttp.open("GET",url,false);
+            xmlhttp.send();
+            return xmlhttp;
+        }
+
+        function generateHTML(parsedXML){
+            ELEMENT_NODE = 1;    // MS parser doesn't define Node.ELEMENT_NODE
+            var root = parsedXML.DocumentElement;
+            var html_text="<html><head><title>XML Parse Result</title></head><body>";
+            html_text+="<table border='2'>";
+            html_text+="<tbody>";
+            html_text+="<tr>";
+            var headerChildNodes = parsedXML.getElementsByTagName("Data");
+            for (var i = 0; i < headerChildNodes.length; i++){
+                var header = headerChildNodes[i].childNodes[0].nodeValue;
+                html_text+="<th>"+header+"</th>";
+            }
+            html_text+="</tr>";
+
+
+            var airLineNodes = parsedXML.getElementsByTagName("Row");
+            if (airLineNodes.length === 0){
+                return null;
+            }
+            for(var i=0; i<airLineNodes.length; i++) //do for all planes
+            {
+                var planeNodeList = airLineNodes.item(i).childNodes; //get properties of a plane
+                html_text+="<tr>";      //start a new row of the output table
+                var count = 0;
+                for(var j=0; j<planeNodeList.length; j++)
+                {
+                    if(planeNodeList.item(j).nodeType==ELEMENT_NODE)
+                    {
+                        var node = planeNodeList.item(j).firstChild;
+                        if (node != null) {
+                            if (count == 5) {//handle images separately
+                                html_text += "<td><img src='" + node.nodeValue + "' width='" + 200 + "' height='" + 150 + "'></td>";
+                            }
+                            else if (count == 4) {
+                                html_text += "<td><a href='" + node.nodeValue + "'> "+ node.nodeValue + " </a></td>";
+                            }
+                            else if (count == 2) {
+                                html_text += "<td><ul>";
+                                var hubNodes = planeNodeList.item(j).getElementsByTagName("Hub");
+                                if (hubNodes != null) {
+                                    for (var k = 0; k < hubNodes.length; k++) {
+                                        var hub = hubNodes[k].childNodes[0].nodeValue;
+                                        if (k == 0){
+                                            html_text += "<li><strong>" + hub + "</strong></li>";
+                                        }
+                                        html_text += "<li>" + hub + "</li>";
+                                    }
+                                }
+                                html_text += "</ul></td>";
+                            }
+                            else {
+                                html_text += "<td>" + node.nodeValue + "</td>";
+                                console.log(node.nodeValue)
+                            }
+                        }
+                        else
+                        {
+                            html_text += "<td>" + " " + "</td>";
+                        }
+                        count = count + 1;
+                    }
+                }
+                html_text+="</tr>";
+            }
+
+            return html_text;
+        }
+
+        function handleXMLLoad(parsedXML){
+            var html_text = generateHTML(parsedXML);
+            if (html_text == null){
+                alert("No Airlines found in XML file.")
+                return;
+            }
+            var hWin = window.open("", "Assignment4", "height=800,width=600,scrollbars=yes,resizable=yes");
+            hWin.document.write(html_text);
+            hWin.document.close();
+        }
+
+        function parseXML(form){
+            var url = form.URL.value;
+            if (url == undefined || url == null || url == ""){
+                alert("Please specify a valid XML File Name.")
+                return;
+            }
+
+            var response = loadXML(url);
+            if (response.status === 404){
+                alert("Specified XML File not found.")
+                return;
+            }
+            var parsedXML = response.responseXML;
+            if (parsedXML == null) {
+                alert("Error in parsing in XML file.")
+                return;
+            }
+            else if (window.ActiveXObject) //if IE, simply execute script (due to async prop).
+            {
+                if (parsedXML.parseError.errorCode != 0)
+                {
+                    var myErr = parsedXML.parseError;
+                    alert(myErr);
+                    return;
+                } else {
+                    var html_text = generateHTML(parsedXML);
+                    if (html_text == null){
+                        alert("No Airlines found in XML file.")
+                        return;
+                    }
+                    var hWin = window.open("", "Assignment4", "height=800,width=600,scrollbars=yes,resizable=yes");
+                    hWin.document.write(html_text);
+                    hWin.document.close();
+                }
+            }
+            else //else if FF, execute script once XML object has loaded
+            {
+                parsedXML.onload = handleXMLLoad(parsedXML);
+            }
+        }
+    </script>
+</head>
+<body>
+    <div>
+        <h3 style="text-align: center;">Enter URL for Airline List XML File</h3>
+        <div>
+            <form name="myform" method="POST" id="location">
+                <input style="margin-left: 45%" type="text" name="URL" maxlength="255" size="20" value="airlinelist.xml"/>
+                <br />
+                <br />
+                <input style="margin-left: 47%" type="button" name="submit" value="Submit Query" onClick="parseXML(this.form)" />
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
